@@ -13,15 +13,14 @@ def get_rows(location, cost, acNonAc):
     
     #choose collection
     collection = db["hotelrooms"]
-    print(type(collection))
     
     #set query parameters
     #location = "Cochi"
     #cost = 1000
     #acNonAc = "NON-AC"
-
+    print(collection.find_one())
     cost = int(cost)
-    
+     
     #query
     query = {
             
