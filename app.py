@@ -1,4 +1,5 @@
-from algorithms.alby import budget_stay_linear_regression
+from algorithms.cheriyan import budget_stay_decision_tree
+#from algorithms.alby import budget_stay_linear_regression
 from flask import Flask, render_template, request, redirect
 from test import get_rows
 app = Flask(__name__)
@@ -26,7 +27,8 @@ def alby():
     location = request.form.get("location")
     cost = request.form.get("cost")
 
-    predicted_cost = budget_stay_linear_regression(location, acNonAc)
+    #predicted_cost = budget_stay_linear_regression(location, acNonAc)
+    predicted_cost = budget_stay_decision_tree(location, acNonAc)
     
     rows = get_rows(location, cost, acNonAc)
     cursor = []
