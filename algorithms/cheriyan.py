@@ -1,90 +1,75 @@
-# TODO: alby
-# write a function which return the result set according to the user input
-# you may select a machine learning algorithm of your choice
-# to prevent collision, update the choosen algorithm in the project group ASAP
-
-from pymongo import MongoClient
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier 
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import LabelEncoder
-
+##helper functions
 def remove_commas_and_return_integer(value):
     value = str(value)
     if ',' in value:
         cleaned_value = value.replace(',', '')
     else:
-        cleaned_value = value 
+        cleaned_value = value
     try:
         integer_value = int(cleaned_value)
         return integer_value
     except ValueError:
         return None
 
-def budget_stay_decision_tree(location, acNonAc):
-    
-    link = "mongodb+srv://signatureresourcehub:signature@cluster0.ww1qbms.mongodb.net/"
 
-    #connect to mongodb
-    connection = MongoClient(link)
-    print("Connection Complete\n")
 
-    #choose database
-    db = connection["db_project1"]
+import pandas as pd
+from pymongo import MongoClient
 
-    #choose collection
-    collection = db["hotelrooms"]
-    print(type(collection))
+client = MongoClient('mongodb+srv://signatureresourcehub:signature@cluster0.ww1qbms.mongodb.net/')
+db = client['db_project1']
+collection = db['hotelrooms']
 
-    df = pd.DataFrame( list( collection.find() ) )
-    df.drop(columns = ["_id", "availability", "hotelname", "checkOutTime", "checkInTime"], inplace = True)
+# Load data from MongoDB
+data = pd.DataFrame(list(collection.find()))
 
-    df["cost"] = df["cost"].apply(remove_commas_and_return_integer)
-    df["cost_per_person"] = df["cost"]/df["numberOfPersons"]
-    
-    acNonAc_map = {'NON-AC': 0, 'AC': 1}
-    df['acNonAc'] = df['acNonAc'].map(acNonAc_map)
-    
-    #location_means = df.groupby('location')['cost_per_person'].mean().to_dict()
-    #df['location_encoded'] = df['location'].map(location_means)
-    #print(df['location'].unique())
-    # Create a label encoder
-    le = LabelEncoder()
+# Preprocess data
+data['cost'] = data['cost'].apply(remove_commas_and_return_integer)
+data['location'] = data['location'].astype(str)
+data['ac_type'] = data['acNonAc'].astype(str)
 
-    # Fit the encoder to the location data (learn the categories)
-    le.fit(df['location'])
 
-    # Transform the location data into numerical labels
-    df['location_encoded'] = le.transform(df['location'])
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
 
-    
-    X = df[['acNonAc', 'rating', 'location_encoded']]
-    y = df['cost_per_person']
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    model = DecisionTreeClassifier()
-    model.fit(X_train, y_train)
-    
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    
-    ##
-    #location_encoded = location_means[location]
-    ## 
-    if acNonAc == 'AC':
-        acNonAc = 1
-    else:
-        acNonAc = 0
-    ## 
-    rating = 5 
-    
-    new_data = pd.DataFrame({
-            'acNonAc' : [acNonAc],
-            'rating' : rating,
-            'location' : [ location ]
-    })
-    predictions = model.predict(new_data)
-    return predictions[0]
+# Encode categorical features
+le_location = LabelEncoder()
+data['location_encoded'] = le_location.fit_transform(data['location'])
 
+le_ac_type = LabelEncoder()
+data['ac_type_encoded'] = le_ac_type.fit_transform(data['ac_type'])
+
+# Prepare features and target
+X = data[['location_encoded', 'ac_type_encoded', 'cost']]
+y = data['hotelname']
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Random Forest
+rf = RandomForestClassifier()
+rf.fit(X_train, y_train)
+rf_preds = rf.predict(X_test)
+print(f'Random Forest Accuracy: {accuracy_score(y_test, rf_preds)}')
+
+def get_budget_friendly_hotels(location, ac_type, max_cost):
+    location_encoded = le_location.transform([location])
+    ac_type_encoded = le_ac_type.transform([ac_type])
+    
+    user_input = pd.DataFrame([[location_encoded, ac_type_encoded, max_cost]], columns=['location_encoded', 'ac_type_encoded', 'cost'])
+     
+    # Using the Random Forest model for prediction
+    preds = rf.predict(user_input)
+    
+    hotels = data[data['hotelname'].isin(preds)]
+    
+    #return hotels[['hotelname', 'location', 'check_in_time', 'check_out_time', 'ac_type', 'cost']].to_dict(orient='records')
+    return hotels[['hotelname', 'location', 'ac_type', 'cost']].to_dict(orient='records')
+# Example usage
+hotels = get_budget_friendly_hotels('Valanjambalam, Cochin', 'NON-AC', 60)
+for i in hotels:
+    print(i)
