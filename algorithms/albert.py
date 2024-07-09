@@ -55,26 +55,6 @@ y = data['hotelname']
 # Split the data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Decision Tree
-dt = DecisionTreeClassifier()
-dt.fit(X_train, y_train)
-dt_preds = dt.predict(X_test)
-print(f'Decision Tree Accuracy: {accuracy_score(y_test, dt_preds)}')
-
-# Random Forest
-rf = RandomForestClassifier()
-rf.fit(X_train, y_train)
-rf_preds = rf.predict(X_test)
-print(f'Random Forest Accuracy: {accuracy_score(y_test, rf_preds)}')
-
-# KNN
-knn = KNeighborsClassifier()
-knn.fit(X_train, y_train)
-knn_preds = knn.predict(X_test)
-print(f'KNN Accuracy: {accuracy_score(y_test, knn_preds)}')
-
-#support_vector
-
 svr = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
 svr.fit(X_train, y_train)
 svr_preds = svr.predict(X_test)
@@ -88,7 +68,7 @@ def get_budget_friendly_hotels(location, ac_type, max_cost):
     user_input = pd.DataFrame([[location_encoded, ac_type_encoded, max_cost]], columns=['location_encoded', 'ac_type_encoded', 'cost'])
      
     # Using the Random Forest model for prediction
-    preds = rf.predict(user_input)
+    preds = svr.predict(user_input)
     
     hotels = data[data['hotelname'].isin(preds)]
     
